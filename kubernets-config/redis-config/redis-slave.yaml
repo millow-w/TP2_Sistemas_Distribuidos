@@ -1,0 +1,89 @@
+# ConfigMap atualizado (sem senha)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-slave-config
+data:
+  redis.conf: |
+    port 6379
+    bind 0.0.0.0
+    protected-mode no
+    slaveof redis-master 6379
+
+---
+# Deployment 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-slave
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: redis
+      role: slave
+  template:
+    metadata:
+      labels:
+        app: redis
+        role: slave
+    spec:
+      initContainers:
+      - name: config-generator
+        image: busybox
+        command: 
+          - /bin/sh
+          - -c
+          - |
+            cat /etc/config/redis.conf > /etc/redis/redis.conf
+            echo "masterauth $REDIS_PASSWORD" >> /etc/redis/redis.conf
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-secret
+              key: password
+        volumeMounts:
+        - name: redis-config
+          mountPath: /etc/redis
+        - name: config
+          mountPath: /etc/config
+      containers:
+      - name: redis
+        image: redis:6.0
+        command: ["redis-server", "/etc/redis/redis.conf"]
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - name: redis-config
+          mountPath: /etc/redis
+        resources:
+          requests:
+            cpu: "0.5"
+            memory: "512Mi"
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+        args:
+        - "--appendonly"
+        - "yes"
+      volumes:
+      - name: redis-config
+        emptyDir: {}
+      - name: config
+        configMap:
+          name: redis-slave-config
+
+---
+# Service 
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-slave
+spec:
+  ports:
+  - port: 6379
+    targetPort: 6379
+  selector:
+    app: redis
+    role: slave

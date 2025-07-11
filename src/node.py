@@ -1,5 +1,3 @@
-# Implementation of the logic for Cluster Sync processes.
-
 # Qualquer elemento do Cluster Sync ao receber uma solicitação de um cliente envia uma mensagem de Pub a um tópico denominado R topic ou a uma fila denominada R Queue. Nesta mensagem de Pub é inserido apenas o ID do elemento do Cluster Sync, o pedido do cliente e a primitiva ACQUIRE. 
 
 # Cada elemento do Cluster Sync é também um consumidor, portanto recebe todas as mensagens enviadas pelo broker e o mais interessante: NA MESMA ORDEM FIFO, por exemplo. Cabe a cada elemento do cluster ficar avaliando sua fila F (PRIVADA)  de mensagens do broker para saber se pode ou não entrar na seção crítica. 
