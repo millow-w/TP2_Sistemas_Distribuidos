@@ -3,5 +3,5 @@ kind: ConfigMap
 metadata:
   name: client-config
 data:
-  redis_host: "redis-master" 
-  redis_port: "6379"           
+  redis_host: "redis-master" # Point to cluster 
+  redis_port: "6379"           # porta do cluster

@@ -18,6 +18,37 @@ spec:
       - name: redis-client
         image: redis:6.0
         command: ["sleep", "infinity"]
+        # TODO: Replace with script to implement Protocolo 3 logic when Cluster Sync is set up
+        # TODO: Add logic to:
+        # 1. Generate unique client ID (e.g., "client-1") and timestamp for each request
+        # 2. Connect to Cluster Sync service ($REDIS_HOST:$REDIS_PORT) to submit request
+        # 3. Push request to queue (e.g., Redis queue "request_queue" with format "client-1:$TIMESTAMP")
+        # 4. Poll for COMMITTED response (e.g., Redis GET "response:client-1:$TIMESTAMP" or via Cluster Sync API)
+        # 5. Sleep randomly for 1–5 seconds after receiving COMMITTED
+        # 6. Repeat for 10–50 requests
+        # Example script (assuming Cluster Sync uses Redis queue):
+        # command: ["/bin/sh", "-c"]
+        # args:
+        # - |
+        #   CLIENT_ID="client-1"
+        #   REQUEST_COUNT=$((RANDOM % 41 + 10)) # Random 10–50 requests
+        #   for ((i=1; i<=REQUEST_COUNT; i++)); do
+        #     TIMESTAMP=$(date +%s%N) # Nanosecond timestamp
+        #     redis-cli -h $REDIS_HOST -p $REDIS_PORT -a $REDIS_PASSWORD RPUSH request_queue "$CLIENT_ID:$TIMESTAMP"
+        #     echo "Sent request $CLIENT_ID:$TIMESTAMP"
+        #     while true; do
+        #       RESPONSE=$(redis-cli -h $REDIS_HOST -p $REDIS_PORT -a $REDIS_PASSWORD GET "response:$CLIENT_ID:$TIMESTAMP")
+        #       if [ "$RESPONSE" = "COMMITTED" ]; then
+        #         echo "Received COMMITTED for request $CLIENT_ID:$TIMESTAMP"
+        #         break
+        #       fi
+        #       sleep 0.1
+        #     done
+        #     SLEEP_TIME=$((RANDOM % 5 + 1))
+        #     echo "Sleeping for $SLEEP_TIME seconds"
+        #     sleep $SLEEP_TIME
+        #   done
+        #   sleep infinity
         env:
         - name: REDIS_HOST
           valueFrom:
