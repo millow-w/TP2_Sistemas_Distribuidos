@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-client-2
+spec:
+  replicas: 1 
+  selector:
+    matchLabels:
+      app: redis-client
+      client: "client-2" 
+  template:
+    metadata:
+      labels:
+        app: redis-client
+        client: "client-2"
+    spec:
+      containers:
+        - name: redis-client
+          image: redis:6.0
+          command:
+            - redis-cli
+            - "-h"
+            - "$(REDIS_HOST)"
+            - "-p"
+            - "$(REDIS_PORT)"
+            - "-a"
+            - "$(REDIS_PASSWORD)" 
+          env:
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: client-config
+                  key: redis_host
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: client-config
+                  key: redis_port
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-secret  
+                  key: password
+          resources:
+            requests:
+              cpu: "0.2"
+              memory: "256Mi"
+            limits:
+              cpu: "0.5"
+              memory: "512Mi"
