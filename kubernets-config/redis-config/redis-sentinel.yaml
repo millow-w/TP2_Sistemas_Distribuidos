@@ -38,7 +38,7 @@ spec:
           - -c
           - |
             cat /etc/config/sentinel.conf > /etc/redis/sentinel.conf
-            echo "sentinel auth-pass mymaster $REDIS_PASSWORD" >> /etc/redis/sentinel.conf
+            echo "sentinel auth-pass mymaster $$REDIS_PASSWORD" >> /etc/redis/sentinel.conf
         env:
         - name: REDIS_PASSWORD
           valueFrom:

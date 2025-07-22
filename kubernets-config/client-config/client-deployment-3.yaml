@@ -1,43 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: redis-client-3
+  name: client-3
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: redis-client
-      client: "client-3"
+      app: client-3
   template:
     metadata:
       labels:
-        app: redis-client
-        client: "client-3"
+        app: client-3
     spec:
       containers:
-      - name: redis-client
-        image: redis:6.0
-        command: ["sleep", "infinity"]
+      - name: client
+        image: camilaapa/tp2-cluster-sync-redis:latest
+        imagePullPolicy: Never
         env:
-        - name: REDIS_HOST
-          valueFrom:
-            configMapKeyRef:
-              name: client-config
-              key: redis_host
-        - name: REDIS_PORT
-          valueFrom:
-            configMapKeyRef:
-              name: client-config
-              key: redis_port
-        - name: REDIS_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: redis-secret
-              key: password
-        resources:
-          requests:
-            cpu: "0.2"
-            memory: "256Mi"
-          limits:
-            cpu: "0.5"
-            memory: "512Mi"
+        - name: CLIENT_ID
+          value: "client-3"
+        - name: NODE_URL
+          value: "http://node-3.node:5000"
+        command: ["python", "client.py"]
