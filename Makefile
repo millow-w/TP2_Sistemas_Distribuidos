@@ -27,7 +27,7 @@ help:
 	@echo "  test-clients           - Verifica os logs iniciais dos clientes"
 	@echo "  deploy-all             - Implanta todo o sistema (Redis, nós e clientes)"
 	@echo "  undeploy-all           - Remove todo o sistema"
-	@echo "  test-system            - Testa todo o sistema (Redis, nós e clientes)"
+	@echo "  test-system            - Testa o sistema de exclusão mútua distribuída"
 	@echo "  clean                  - Limpa recursos locais"
 
 start-cluster:
@@ -108,16 +108,25 @@ deploy-all: build-app deploy-redis deploy-cluster-sync deploy-clients
 undeploy-all: undeploy-clients undeploy-cluster-sync undeploy-redis
 	@echo "Todos os componentes removidos!"
 
-test-system: test-redis test-cluster-sync test-clients
-# 	@echo "Testando sincronização do contador..."
-# 	@echo "Aguardando 10 segundos para acumular incrementos..."
-# 	@sleep 10
-# 	@echo "Contadores finais nos nós:"
-# 	@for i in 0 1 2 3 4; do \
-# 		echo -n "node-$$i: "; \
-# 		kubectl exec node-$$i -- curl -s http://localhost:5000/counter; \
-# 		echo; \
-# 	done
+test-system: test-redis test-cluster-sync
+	@echo "Testando sistema de exclusão mútua distribuída..."
+	@echo "Aguardando execução dos clientes..."
+	@while kubectl get pods | grep client | grep -q Running; do sleep 1; done
+	@sleep 2
+
+	@echo "\nVerificando conclusão dos clientes:"
+	@for i in 0 1 2 3 4; do \
+		echo "======== Client $$i ========"; \
+		kubectl logs deployment/client-$$i | grep -e "completed all accesses" -e "ERROR" | tail -1; \
+		echo; \
+	done
+	@echo "\nVerificando erros nos nós do cluster:"
+	@for i in 0 1 2 3 4; do \
+		echo "======== Node $$i ========"; \
+		kubectl logs node-$$i | grep "ERROR" | tail -5; \
+		echo; \
+	done
+	@echo "\nTeste do sistema completo!"
 
 clean:
 	@echo "Limpando recursos locais..."

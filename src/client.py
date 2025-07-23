@@ -13,11 +13,12 @@
 # Cada cliente deve pedir entre 10 e 50 acessos de escrita ao recurso R, forçando, desta forma, a concorrência e, consequentemente, a validação do protocolo de exclusão mútua. 
 
 import os
-import time
-import random
-import requests
-import logging
-import threading
+import time 
+import random 
+import requests 
+import logging 
+import sys
+from datetime import datetime, timezone
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -25,23 +26,49 @@ logger = logging.getLogger(__name__)
 def main():
     client_id = os.getenv('CLIENT_ID')
     node_url = os.getenv('NODE_URL')
-    
-    logger.info(f"Client {client_id} starting. Connected to node: {node_url}")
-    
-    while True:
-        try:
-            # Incrementa o contador no nó
-            response = requests.post(f"{node_url}/increment")
-            if response.status_code == 200:
-                counter = response.json().get('counter')
-                logger.info(f"{client_id} incremented counter to {counter}")
-            else:
-                logger.error(f"Failed to increment: {response.text}")
-        except Exception as e:
-            logger.error(f"Connection error: {str(e)}")
-        
-        # Intervalo aleatório entre 1-3 segundos
-        time.sleep(random.uniform(1, 3))
 
-if __name__ == '__main__':
+    logger.info(f"Client {client_id} starting. Connected to node: {node_url}")
+
+    # total_access = 2
+
+    total_access = random.randint(10, 50)
+
+    logger.info(f"Client {client_id} will perform {total_access} accesses to resource R")
+    
+    for access_num in range(1, total_access + 1):
+        timestamp = int(datetime.now(timezone.utc).timestamp() * 1000)
+        logger.info(f"Client {client_id} requesting access #{access_num} to R. Timestamp: {timestamp}")
+
+        try:
+            response = requests.post(
+                f"{node_url}/request_access",
+                json={
+                    "client_id": client_id,
+                    "timestamp": timestamp,
+                    "access_num": access_num
+                },
+                timeout=5
+            )
+
+            if response.status_code == 200:
+                response_data = response.json()
+                if response_data.get("status") == "COMMITTED":
+                    logger.info(f"Access #{access_num} COMMITTED for client {client_id}")
+                    sleep_time = random.uniform(1, 5)
+                    logger.info(f"Client {client_id} sleeping for {sleep_time:.2f} seconds")
+                    time.sleep(sleep_time)
+                else:
+                    logger.error(f"Unexpected response: {response_data}")
+            else:
+                logger.error(f"Request failed: {response.status_code} - {response.text}")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Connection error: {str(e)}")
+        except Exception as e:
+            logger.error(f"Unexpected error: {str(e)}")
+
+    logger.info(f"Client {client_id} completed all accesses")
+    sys.exit(0)
+
+if __name__  == '__main__':
     main()
+            
