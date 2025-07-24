@@ -99,7 +99,7 @@ test-clients:
 	@echo "Verificando logs dos clientes:"
 	@for i in 0 1 2 3 4; do \
 		echo -n "client-$$i: "; \
-		kubectl logs deployment/client-$$i | grep "starting"; \
+		kubectl logs job/client-$$i | grep "starting"; \
 	done
 
 deploy-all: build-app deploy-redis deploy-cluster-sync deploy-clients
@@ -111,21 +111,25 @@ undeploy-all: undeploy-clients undeploy-cluster-sync undeploy-redis
 test-system: test-redis test-cluster-sync
 	@echo "Testando sistema de exclusão mútua distribuída..."
 	@echo "Aguardando execução dos clientes..."
+
+	# Aguarda até todos os pods de clientes saírem do estado Running
 	@while kubectl get pods | grep client | grep -q Running; do sleep 1; done
 	@sleep 2
 
 	@echo "\nVerificando conclusão dos clientes:"
 	@for i in 0 1 2 3 4; do \
 		echo "======== Client $$i ========"; \
-		kubectl logs deployment/client-$$i | grep -e "completed all accesses" -e "ERROR" | tail -1; \
+		kubectl logs job/client-$$i | grep -e "completed all accesses" -e "ERROR" | tail -1; \
 		echo; \
 	done
+
 	@echo "\nVerificando erros nos nós do cluster:"
 	@for i in 0 1 2 3 4; do \
 		echo "======== Node $$i ========"; \
 		kubectl logs node-$$i | grep "ERROR" | tail -5; \
 		echo; \
 	done
+
 	@echo "\nTeste do sistema completo!"
 
 clean:

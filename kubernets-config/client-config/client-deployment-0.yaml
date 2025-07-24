@@ -1,17 +1,14 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: batch/v1
+kind: Job
 metadata:
   name: client-0
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: client-0
   template:
     metadata:
       labels:
         app: client-0
     spec:
+      restartPolicy: Never
       containers:
       - name: client
         image: camilaapa/tp2-cluster-sync-redis:latest

@@ -104,30 +104,13 @@ def process_event(event_data):
         key = (client_id, timestamp)
 
         if event_type == 'ACQUIRE': 
-            # request_queue.append({
-            #     'node_id': node_id,
-            #     'client_id': client_id,
-            #     'timestamp': timestamp,
-            #     'access_num': access_num
-            # })
             new_req = Request(node_id, client_id, timestamp, access_num)
             bisect.insort(request_queue, new_req)
             logger.info(f"ACQUIRE added to queue - Client: {client_id}, TS: {timestamp}")
         elif event_type == 'RELEASE':
-            # if request_queue and request_queue[0]['client_id'] == client_id and request_queue[0]['timestamp'] == timestamp:
             if request_queue and request_queue[0].client_id == client_id and str(request_queue[0].timestamp) == timestamp:
-                # request_queue.popleft()
                 request_queue.pop(0)
                 logger.info(f"RELEASE processed - Client: {client_id}, TS: {timestamp}")
-
-        # Verifica se o primeiro da fila é deste nó e sinaliza
-        # if request_queue and request_queue[0]['node_id'] == NODE_ID:
-        #     next_req = request_queue[0]
-        #     next_key = (next_req['client_id'], next_req['timestamp'])
-
-        #     if next_key in pending_requests:
-        #         pending_requests[next_key].set()
-        #         logger.info(f"Resource granted for Client: {next_req['client_id']}, Access#: {next_req['access_num']}")
 
         if request_queue and request_queue[0].node_id == NODE_ID:
             next_req = request_queue[0]
