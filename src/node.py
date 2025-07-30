@@ -14,7 +14,6 @@ import time
 import random
 import redis
 from redis.sentinel import Sentinel
-# from collections import deque
 import bisect
 
 # ---------- INICIALIZAÇÃO DO FLASK -----------
@@ -86,7 +85,7 @@ def ready():
         redis_master.ping()
         return "READY", 200
     except Exception as e:
-        logger.erro(f"Redis not ready: {str(e)}")
+        logger.error(f"Redis not ready: {str(e)}")
         return "Not ready", 503
     
 # ---------- PROCESSAMENTO DE EVENTO DO STREAM -----------

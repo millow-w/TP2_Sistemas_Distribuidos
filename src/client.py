@@ -66,7 +66,7 @@ def main():
         except Exception as e:
             logger.error(f"Unexpected error: {str(e)}")
 
-    logger.info(f"Client {client_id} completed all accesses")
+    logger.info(f"Client {client_id} completed all accesses with {total_access} accessess in total.")
     sys.exit(0)
 
 if __name__  == '__main__':

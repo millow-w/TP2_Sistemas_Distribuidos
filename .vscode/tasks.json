@@ -1,0 +1,44 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+        "label": "Split 4 WSL Terminals",
+        "type": "shell",
+        "command": "echo 'Abrindo 4 terminais no WSL com venv...'",
+        "presentation": {
+            "reveal": "always",
+            "panel": "shared",
+            "group": "wsl"
+        },
+        "dependsOn": [
+            "wsl-terminal-1",
+            "wsl-terminal-2",
+            "wsl-terminal-3",
+            "wsl-terminal-4"
+        ],
+        "problemMatcher": [
+            "$python"
+        ]
+    },
+    {
+        "label": "wsl-terminal-1",
+        "type": "shell",
+        "command": "source .venv/bin/activate; exec bash"
+    },
+    {
+        "label": "wsl-terminal-2",
+        "type": "shell",
+        "command": "source .venv/bin/activate; exec bash"
+    },
+    {
+        "label": "wsl-terminal-3",
+        "type": "shell",
+        "command": "source .venv/bin/activate; exec bash"
+    },
+    {
+        "label": "wsl-terminal-4",
+        "type": "shell",
+        "command": "source .venv/bin/activate; exec bash"
+    }
+]
+}
