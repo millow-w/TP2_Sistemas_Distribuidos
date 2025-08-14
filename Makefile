@@ -108,6 +108,12 @@ deploy-all: build-app deploy-redis deploy-cluster-sync deploy-clients
 undeploy-all: undeploy-clients undeploy-cluster-sync undeploy-redis
 	@echo "Todos os componentes removidos!"
 
+test-cs: 
+	@echo "Vendo quem está em cs: "
+	@kubectl run cs-watcher --rm -it --restart=Never --image=redis:6.0 \
+		-- redis-cli -h redis-master -a redisStrongPass123 SUBSCRIBE cs_monitor
+
+
 test-system: test-redis test-cluster-sync
 	@echo "Testando sistema de exclusão mútua distribuída..."
 	@echo "Aguardando execução dos clientes..."

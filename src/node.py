@@ -52,22 +52,26 @@ lock = threading.Lock()
 request_queue = [] # Fila FIFO de pedidos de acesso
 
 class Request:
-    def __init__(self, node_id, client_id, timestamp, access_num):
+    def __init__(self, node_id, client_id, timestamp, access_num, stream_id):
         self.node_id = node_id
         self.client_id = client_id
         self.timestamp = int(timestamp)
         self.access_num = access_num
+        self.stream_id = stream_id  # ID do Redis Stream (ex: "1722745641234-0")
 
-    def __lt__(self, other):  # Define ordenação por timestamp
-        return self.timestamp < other.timestamp
+    def __lt__(self, other):
+        # Ordenar pela ordem no Redis Stream
+        return self.stream_id < other.stream_id
 
     def to_dict(self):
         return {
             'node_id': self.node_id,
             'client_id': self.client_id,
             'timestamp': str(self.timestamp),
-            'access_num': self.access_num
-        }  
+            'access_num': self.access_num,
+            'stream_id': self.stream_id
+        }
+
 
 # { (client_id, timestamp): threading.Event }
 # mapeia pedidos que estão esperando a liberação do recurso (cada cliente espera seu .Event() ser sinalizado).
@@ -90,26 +94,23 @@ def ready():
     
 # ---------- PROCESSAMENTO DE EVENTO DO STREAM -----------
 
-def process_event(event_data):
+def process_event(event_data, redis_id):
     with lock:
-        # Extrai dados do evento publicado
         event_type = event_data['type']
         node_id = event_data['node_id']
         client_id = event_data['client_id']
         timestamp = event_data['timestamp']
         access_num = event_data['access_num']
 
-        # Chave única para identificar o pedido
         key = (client_id, timestamp)
 
-        if event_type == 'ACQUIRE': 
-            new_req = Request(node_id, client_id, timestamp, access_num)
+        if event_type == 'ACQUIRE':
+            new_req = Request(node_id, client_id, timestamp, access_num, redis_id)
             bisect.insort(request_queue, new_req)
             logger.info(f"ACQUIRE added to queue - Client: {client_id}, TS: {timestamp}")
         elif event_type == 'RELEASE':
-            if request_queue and request_queue[0].client_id == client_id and str(request_queue[0].timestamp) == timestamp:
-                request_queue.pop(0)
-                logger.info(f"RELEASE processed - Client: {client_id}, TS: {timestamp}")
+            request_queue[:] = [r for r in request_queue if not (r.client_id == client_id and str(r.timestamp) == timestamp)]
+            logger.info(f"RELEASE processed - Client: {client_id}, TS: {timestamp}")
 
         if request_queue and request_queue[0].node_id == NODE_ID:
             next_req = request_queue[0]
@@ -117,6 +118,7 @@ def process_event(event_data):
             if next_key in pending_requests:
                 pending_requests[next_key].set()
                 logger.info(f"Resource granted for Client: {next_req.client_id}, Access#: {next_req.access_num}")
+
 
 # ---------- CONSUMIDOR DE EVENTOS (STREAM READER) -----------
 def consume_events():
@@ -128,7 +130,8 @@ def consume_events():
                 stream, messages = events[0]
                 for message_id, message_data in messages:
                     last_id = message_id
-                    process_event({k.decode(): v.decode() for k, v in message_data.items()})
+                    process_event({k.decode(): v.decode() for k, v in message_data.items()}, message_id.decode())
+
         except redis.exceptions.TimeoutError:
             logger.debug("No new event in stream, waiting again...")
             time.sleep(1)
@@ -172,8 +175,26 @@ def handle_request():
                 del pending_requests[key]
         return jsonify({"status": "TIMEOUT"}), 408
     
-    # Simular tempo na seçao crítica
+    # --- Entrando na Critical Section ---
+    logger.info(f"[NODE {NODE_ID}] ENTER CS - Client {client_id}, Access# {access_num}")
+
+    # Publica no Redis que entrou na CS
+    redis_master.publish(
+        "cs_monitor",
+        f"{time.time()} ENTER {NODE_ID} {client_id} {access_num}"
+    )
+
+    # Simula tempo dentro da CS
     time.sleep(random.uniform(0.2, 1.0))
+
+    # --- Saindo da Critical Section ---
+    logger.info(f"[NODE {NODE_ID}] EXIT CS - Client {client_id}, Access# {access_num}")
+
+    # Publica no Redis que saiu da CS
+    redis_master.publish(
+        "cs_monitor",
+        f"{time.time()} EXIT {NODE_ID} {client_id} {access_num}"
+    )
 
     # Publicar evento RELEASE
     try:
